@@ -1,0 +1,141 @@
+﻿@page "/devEdit"
+@using AparmentManager2023.Data,
+@using AparmentManager2023.Services;
+@inject OwnerService os
+@*@inject ApartmentService aps
+@inject PersonService ps
+@inject PayerService pays
+@inject Monthly_BillService mbs*@
+
+<div style="text-align:center;">
+    <h3>CRUD Testing with Postgres using Blazor and bootstrap model popup</h3>
+    <MudButton Class="btn-primary" @onclick="emptypopup">
+        Add Owner
+    </MudButton>
+    @if (popup)
+    {
+        
+    
+    <div class="modal" tabindex="-1" role="dialog" style="display:block;">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Apartment_Owner table</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close" @onclick="Closepopup">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <EditForm Model="oobj" OnValidSubmit="insertOwner">
+                    <div class="modal-body">
+                        <table class="table">
+                                <tr>
+                                    <td>Username</td>
+                                    <td><input type="text" @bind="oobj.Username"></input></td>
+                                </tr>
+                                <tr>
+                                    <td>Password</td>
+                                    <td><input type="password"  @bind="oobj.Password"></input></td>
+                                </tr>
+                                <tr>
+                                    <td>Email</td>
+                                    <td><input type="text" @bind="oobj.Email"></input></td>
+                                </tr>
+                        </table>
+                </div>
+                <div class="modal-footer">
+                        <button type="submit" class="btn btn-primary" @onclick="Closepopup">Save</button>
+                            <button type="button" class="btn btn-secondary" data-dismiss="modal" @onclick="Closepopup">Close</button>
+                </div>
+                    </EditForm>
+            </div>
+        </div>
+    </div>
+    }
+    <br>
+    <table class="table">
+        <tr>
+        <th>Owner_ID</th>
+        <th>Username</th>
+        <th>Password</th>
+        <th>Email</th>
+        </tr>
+        @foreach(var item in oclist)
+        {
+            <tr>
+                <td>@item.Owner_ID</td>
+                <td>@item.Username</td>
+                <td>@item.Password</td>
+                <td>@item.Email</td>
+                <td class="btn-primary" @onclick="(()=>getOwnerDetail(item))">Edit</td>
+                <td class="btn-danger" @onclick="(()=>delowner(item))">Delete</td>
+            </tr>
+        }
+    </table>
+    </div>
+
+@code {
+    List<OwnerClass> oclist;
+    //List<ApartmentClass> aclist;
+    //List<PersonClass> pclist;
+    //List<PayerClass> payclist;
+    //List<Monthly_BillClass> mbclist;
+
+    OwnerClass oobj = new OwnerClass();
+    //ApartmentClass aobj = new ApartmentClass();
+    //PersonClass pobj = new PersonClass();
+    //PayerClass payobj = new PayerClass();
+    //Monthly_BillClass mbobj = new Monthly_BillClass();
+
+    bool popup = false;
+    void emptypopup()
+    {
+        Showpopup();
+        getOwnerDetail(new OwnerClass());
+    }
+
+    void Showpopup()
+    {
+        popup = true;
+    }
+    void Closepopup()
+    {
+        popup = false;
+    }
+    protected override void OnInitialized()
+    {
+        oclist = os.displayowner();
+        //aclist = aps.displayapartment();
+        //pclist = ps.displayperson();
+        //payclist = pays.displaypayer();
+        //mbclist = mbs.displayMonthly_Bill();
+    }
+    void insertOwner()
+    {
+        var update_details = false;
+        if (oobj.Owner_ID > 0)
+        {
+            update_details = os.updateOwner(oobj);
+            popup = false;
+        }
+        else
+        {
+            oobj.Owner_ID = oclist.Count() + 1;
+            os.insertOwner(oobj);
+        }
+
+
+        oclist = os.displayowner();
+    }
+    void getOwnerDetail(OwnerClass ocedit)
+    {
+        oobj = ocedit;
+        popup = true;
+    }
+    void delowner(OwnerClass ocdel)
+    {
+        var res = os.deleteOwner(ocdel);
+        oclist.Clear();
+        oclist = os.displayowner();
+    }
+   
+}

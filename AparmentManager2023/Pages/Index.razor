@@ -1,0 +1,206 @@
+﻿@inherits LayoutComponentBase
+@using AparmentManager2023.Data
+@using AparmentManager2023.Data.FrontEnd;
+@using AparmentManager2023.Services
+@using Syncfusion.Blazor.Charts
+
+@inject ApartmentService apartmentService
+@inject Monthly_BillService mbs
+@inject IDialogService DialogService
+@inject NavigationManager NavigationManager
+
+@page "/"
+
+<PageTitle>Index</PageTitle>
+
+<MudPaper Class="p-5 mb-5">
+    <SfChart Title="Annual Income" Width="100%" Height="400px">
+        <ChartPrimaryXAxis ValueType="Syncfusion.Blazor.Charts.ValueType.Category"></ChartPrimaryXAxis>
+        <ChartTooltipSettings Enable="true"></ChartTooltipSettings>
+        <ChartSeriesCollection>
+            <ChartSeries DataSource="@IncomeDetails" XName="X" YName="Y" Type="ChartSeriesType.Spline" Width="5">
+            </ChartSeries>
+        </ChartSeriesCollection>
+    </SfChart>
+</MudPaper>
+
+
+<MudPaper Class="p-5">
+    <MudDataGrid T="ApartmentClass" ReadOnly="@_readOnly" Items="@ac" EditMode="DataGridEditMode.Cell " RowClick="@OpenDialog" Hover="true" Elevation="0" CommittedItemChanges="@CommittedItemChanges">
+        <ToolBarContent>
+            <MudText Typo="Typo.h6">Appartments</MudText>
+            <MudSpacer></MudSpacer>
+            <MudButtonGroup Color="Color.Primary" Variant="Variant.Filled">
+                <MudIconButton Icon="@Icons.Material.Outlined.Edit" OnClick="@HandleButtonClick"></MudIconButton>
+                <MudIconButton Icon="@Icons.Material.Outlined.Add" OnClick="OpenNewApartmentDialog" />
+
+            </MudButtonGroup>
+        </ToolBarContent>
+        <Columns>
+            <PropertyColumn Property="a => a.Name" Title="Name" />
+            <PropertyColumn Property="a => a.Address" Title="Address" />
+            <PropertyColumn Property="a => a.Monthly_Price" Title="Monthly_Price" />
+            <PropertyColumn Property="a => a.M2" Title="m2" />
+            <PropertyColumn Property="a =>  Math.Round(a.Monthly_Price / a.M2)" Title="Price/m2" CellStyleFunc="@CellStylePriceM2" />
+            <TemplateColumn>
+                <CellTemplate>
+                    <MudIconButton Icon="@Icons.Material.Outlined.Delete" Size="@Size.Small" OnClick="@((e) => ApartmentDeleteConfirm(context.Item))" />
+                </CellTemplate>
+            </TemplateColumn>
+        </Columns>
+    </MudDataGrid>
+    <MudMessageBox @ref="mbox" Title="Warning" CancelText="Cancel">
+        <MessageContent>
+            Deleting can not be undone!
+        </MessageContent>
+        <YesButton>
+            <MudButton Variant="Variant.Text" Color="Color.Error">Delete!</MudButton>
+        </YesButton>
+    </MudMessageBox>
+
+</MudPaper>
+
+@code {
+    public List<Monthly_BillClass> Bills;
+    public List<ApartmentClass> ac;
+    public bool _readOnly;
+    private bool editTriggerRowClick;
+    private bool dialogClosed;
+
+    protected override void OnInitialized()
+    {
+        Bills = mbs.displayMonthly_Bill();
+        ac = apartmentService.displayapartment();
+        addChartData();
+        _readOnly = true;
+        dialogClosed = false;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (dialogClosed)
+        {
+            dialogClosed = false;
+            await UpdateAparmentTable();
+        }
+    }
+
+    public void HandleButtonClick()
+    {
+        _readOnly = !_readOnly;
+    }
+
+    private async void OpenDialog(DataGridRowClickEventArgs<ApartmentClass> args)
+    {
+        if (_readOnly)
+        {
+            DialogOptions closeOnEscapeKey = new DialogOptions() { CloseOnEscapeKey = true };
+            var parameters = new DialogParameters();
+            parameters.Add("apartment", args.Item);
+            var dialog = DialogService.Show<AparmentDialog>("", parameters, closeOnEscapeKey);
+
+            await dialog.Result;
+
+            dialogClosed = true;
+            IncomeDetails.Clear();
+            addChartData();
+
+            StateHasChanged();
+        }
+    }
+
+    private void OpenNewApartmentDialog()
+    {
+        DialogOptions closeOnEscapeKey = new DialogOptions() { CloseOnEscapeKey = true };
+        DialogOptions noHeader = new DialogOptions() { NoHeader = true };
+
+        DialogService.Show<NewAparmentDialog>("New Apartment", closeOnEscapeKey);
+    }
+
+    MudMessageBox mbox { get; set; }
+    string state = "Message box hasn't been opened yet";
+
+    private async void ApartmentDeleteConfirm(ApartmentClass apartment)
+    {
+        bool? result = await mbox.Show();
+
+        if (result != null && result == true)
+        {
+            apartmentService.deleteApartment(apartment);
+        }
+
+        await UpdateAparmentTable();
+    }
+
+    void CommittedItemChanges(ApartmentClass apartmentModel)
+    {
+        apartmentService.updateApartment(apartmentModel);
+    }
+
+    public async Task UpdateAparmentTable()
+    {
+        ac = apartmentService.displayapartment();
+        StateHasChanged();
+    }
+
+    public List<ChartData> IncomeDetails = new List<ChartData>();
+
+    public class ChartData
+    {
+        public string X { get; set; } // Month
+        public double Y { get; set; } // Income
+        public string Color { get; set; }
+
+        public ChartData(string x, double y, string color)
+        {
+            X = x;
+            Y = y;
+            Color = color;
+        }
+    }
+
+    public void addChartData()
+    {
+        var groupedBills = Bills.Where(b => b.Paid)
+                               .GroupBy(b => new { b.Month, b.Year })
+                               .Select(g => new
+                               {
+                                   Month = g.Key.Month,
+                                   Year = g.Key.Year,
+                                   TotalAmountPaid = g.Sum(b => b.Amount_Paid)
+                               });
+
+        foreach (var item in groupedBills)
+        {
+            string monthName = new DateTime(item.Year, item.Month, 1).ToString("MMMM");
+            IncomeDetails.Add(new ChartData(monthName, item.TotalAmountPaid, "blue"));
+        }
+    }
+
+    private Func<ApartmentClass, string> CellStylePriceM2 => x =>
+    {
+        string style = "";
+
+        double roundedM2 = Math.Round(x.Monthly_Price / x.M2);
+
+        if (roundedM2 < 30)
+        {
+            style += "color:#ED1D35; font-weight:bold;";
+        }
+        else if (roundedM2 >= 30 && roundedM2 < 50)
+        {
+            style += "color:#FFA21F; font-weight:bold;";
+        }
+        else if (roundedM2 >= 50 && roundedM2 < 80)
+        {
+            style += "color:#F5D400; font-weight:bold;";
+        }
+        else if (roundedM2 >= 80)
+        {
+            style += "color:#29E054; font-weight:bold;";
+        }
+
+        return style;
+    };
+}
+

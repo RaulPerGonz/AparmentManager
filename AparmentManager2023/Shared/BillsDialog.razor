@@ -1,0 +1,72 @@
+﻿@inherits LayoutComponentBase
+@using AparmentManager2023.Data
+@using AparmentManager2023.Data.FrontEnd;
+@using AparmentManager2023.Services
+@using System.Text.RegularExpressions
+@using System.ComponentModel.DataAnnotations
+@inject Monthly_BillService billService
+@inject ISnackbar Snackbar
+@inject IDialogService DialogService
+
+
+<MudDialog DefaultFocus="DefaultFocus.FirstChild" Class="pt-0" ClassContent="px-0 pt-0 pb-0 overflow-hidden" >
+    
+    <DialogContent>
+       
+        
+        <MudDataGrid Items="@Bills" T="Monthly_BillClass" Hover="true" Elevation="0" SortMode="SortMode.Multiple" >
+          
+            <Columns>
+                <PropertyColumn Property="bill => bill.Year" Title="Year"/>
+                <PropertyColumn Property="bill => bill.Month" Title="Month"/>
+                <PropertyColumn Property="bill => bill.Amount_Paid" Title="Amount_Paid"/>
+                <TemplateColumn Title="Paid">
+                    <CellTemplate>
+                        <MudCheckBox @bind-Checked="@context.Item.Paid"  Color="Color.Primary"></MudCheckBox>
+                    </CellTemplate>
+                 </TemplateColumn>
+            </Columns>
+        </MudDataGrid>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Color="Color.Primary" OnClick="Submit">Ok</MudButton>
+    </DialogActions>
+</MudDialog>
+@code {
+    [CascadingParameter] MudDialogInstance MudDialog { get; set; }
+
+    [Parameter] public string personID { get; set; }
+    [Parameter] public int apartmentID { get; set; }
+
+    public List<Monthly_BillClass> Bills;
+    
+    void Cancel() => MudDialog.Cancel();
+    bool success;
+    string[] errors = { };
+    public bool paid { get; set; } = false;
+
+    protected override void OnInitialized()
+    {
+
+        Bills = billService.GetMonthly_Bill_Payer(personID, apartmentID);
+        MudDialog.SetOptions(new DialogOptions() { MaxWidth = MaxWidth.Small });
+    }
+
+    void Submit()
+    {
+        MudDialog.Close(DialogResult.Ok(true)); 
+        
+        foreach (Monthly_BillClass bill in Bills)
+        {
+            billService.updateMonthly_Bill(bill);
+        }
+    }
+
+   
+   
+}
+
+
+    
+

@@ -1,0 +1,216 @@
+﻿@inherits LayoutComponentBase
+@using AparmentManager2023.Data
+@using AparmentManager2023.Data.FrontEnd;
+@using AparmentManager2023.Services
+@using MudBlazor
+@inject BillService Person_Service
+@inject Monthly_BillService monthly_BillService
+@inject ApartmentService aps
+@inject Person_ApartmentService pas
+@inject IDialogService DialogService
+<MudDialog ClassContent="">
+    <DialogContent>
+        <MudGrid>
+            <MudItem xs="12" sm="5">
+                <MudImage ObjectFit="ObjectFit.Cover" Src="@apartment.Image" Alt="Swedish Farm House" Class="rounded-lg" Style="width: 100%" Height="200" />
+            </MudItem>
+            <MudItem xs="12" sm="7">
+                <MudText Typo="Typo.subtitle1"></MudText>
+                <MudList Clickable="false">
+                    <MudListItem Text="@apartment.Name" Icon="@Icons.Material.Filled.Home" />
+                    <MudListItem Text="@apartment.Address" Icon="@Icons.Material.Filled.LocationOn" />
+                    <MudListItem Text="@apartment.Monthly_Price.ToString()" Icon="@Icons.Material.Filled.Toll" />
+                    <MudListItem Text="@apartment.M2.ToString()" Icon="@Icons.Material.Filled.AspectRatio" />
+                </MudList>
+            </MudItem>
+        </MudGrid>
+        <MudDataGrid T="PersonModel" ReadOnly="@_readOnly" Items="@People" EditMode="DataGridEditMode.Cell" Hover="true" Elevation="0" CommittedItemChanges="@CommittedItemChanges" >
+            <ToolBarContent>
+                <MudText Typo="Typo.h6">People</MudText>
+                <MudSpacer></MudSpacer>
+                <MudButtonGroup Color="Color.Primary" Variant="Variant.Filled">
+                    <MudIconButton Icon="@Icons.Material.Outlined.Edit" OnClick="@HandleButtonClick"></MudIconButton>
+                    <MudIconButton Icon="@Icons.Material.Outlined.Add"  OnClick="OpenNewPersonDialog" />
+                </MudButtonGroup>
+            </ToolBarContent>
+            <Columns>
+                <PropertyColumn Property="people => people.Id" Title="Id" IsEditable="false" />
+                <PropertyColumn Property="people => people.Name" Title="Name" />
+                <PropertyColumn Property="people => people.Email" Title="Email" />
+                <PropertyColumn Property="people => people.Phone" Title="Phone">
+                    <EditTemplate>
+                        <MudTextField T="long" Value="context.Item.Phone" Placeholder="" Required="true" RequiredError="Phone is required!" Margin="Margin.Dense" MaxLength="9" />
+                    </EditTemplate>
+                </PropertyColumn>
+                <PropertyColumn Property="apartment => apartment.IsPaying" Title="Type" Hideable="false" ShowColumnOptions="true">
+                    <CellTemplate>
+                        @if (context.Item.IsPaying)
+                        {
+                            <MudChip Size="Size.Small" Color="Color.Primary" Class="ma-0">Payer</MudChip>
+                        }
+                        else
+                        {
+                            <MudChip Size="Size.Small" Color="Color.Default" Class="ma-0" >Regular</MudChip>
+                        }
+                    </CellTemplate>
+                    <EditTemplate>
+                        <MudSelect T="bool" AnchorOrigin="Origin.BottomCenter" @bind-Value="context.Item.IsPaying" @bind-Value:after="@(() => ChangePayingRole(context.Item.IsPaying,@apartment.Apartment_ID,context.Item.Id))" Dense="true">
+                            <MudSelectItem Value="true">Payer</MudSelectItem>
+                            <MudSelectItem Value="false">Regular</MudSelectItem>
+                        </MudSelect>
+                    </EditTemplate>
+                </PropertyColumn>
+                <TemplateColumn StickyRight="true">
+                    <CellTemplate>
+                        @if (context.Item.IsPaying)
+                        {
+                            <MudIconButton Icon="@Icons.Material.Outlined.Description" Size="Size.Small" OnClick="@((e) => OpenBillsDialog(context.Item))" />
+                        }
+                        <MudIconButton Icon="@Icons.Material.Outlined.Delete" Size="@Size.Small" OnClick="@((e) => PersonDeleteConfirm(context.Item.Id))" />
+                    </CellTemplate>
+                </TemplateColumn>
+            </Columns>
+        </MudDataGrid>
+
+        <MudMessageBox @ref="mbox" Title="Warning" CancelText="Cancel">
+            <MessageContent>
+                Deleting can not be undone!
+            </MessageContent>
+            <YesButton>
+                <MudButton Variant="Variant.Text" Color="Color.Error">Delete!</MudButton>
+            </YesButton>
+        </MudMessageBox>
+
+
+
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Color="Color.Primary" OnClick="Submit">Ok</MudButton>
+    </DialogActions>
+
+</MudDialog>
+
+
+
+@code {
+    [CascadingParameter] MudDialogInstance MudDialog { get; set; }
+
+    void Submit() => MudDialog.Close(DialogResult.Ok(true));
+    void Cancel() => MudDialog.Cancel();
+
+    public bool _readOnly;
+    public List<PersonModel> People;
+    public List<Person_ApartmentClass> filteredpeople;
+    public PersonClass selectedPerson { get; set; }
+    [Parameter] public ApartmentClass apartment { get; set; }
+    public string PersonValue { get; set; } = "Regular";
+
+
+
+    protected override void OnInitialized()
+    {
+        _readOnly = true;
+        People = Person_Service.GetListOfTenants(apartment.Apartment_ID);
+        MudDialog.SetOptions(new DialogOptions() { MaxWidth = MaxWidth.Medium });
+
+    }
+
+    public void HandleButtonClick()
+    {
+        _readOnly = !_readOnly;
+    }
+
+
+    private string showPersonRole()
+    {
+        return "";
+    }
+    private void ChangePayingRole(bool isPaying,int apartmentId,string personId)
+    {
+        var result = Person_Service.updatePayingFromPerson(isPaying, apartmentId, personId);
+    }
+
+    private async void OpenNewPersonDialog()
+    {
+        DialogOptions closeOnEscapeKey = new DialogOptions() { CloseOnEscapeKey = true };
+        DialogOptions noHeader = new DialogOptions() { NoHeader = true };
+        var parameters = new DialogParameters();
+        parameters.Add("apartment", apartment);
+        var dialogResult = DialogService.Show<NewPersonDialog>("New Person", parameters, closeOnEscapeKey);
+        var result = await dialogResult.Result;
+        if (!result.Canceled && bool.TryParse(result.Data.ToString(), out bool resultbool)) UpdatePeopleTable();
+
+
+
+
+    }
+
+    public async void UpdatePeopleTable()
+    {
+
+        People = Person_Service.GetListOfTenants(apartment.Apartment_ID);
+        StateHasChanged();
+
+    }
+
+
+    private void OpenBillsDialog(PersonModel person)
+    {
+
+        DialogOptions closeOnEscapeKey = new DialogOptions() { CloseOnEscapeKey = true , NoHeader = true};
+        var parameters = new DialogParameters();
+        parameters.Add("personID", person.Id);
+        parameters.Add("apartmentID", apartment.Apartment_ID);
+        DialogService.ShowAsync<BillsDialog>("Bills", parameters, closeOnEscapeKey);
+    }
+    MudMessageBox mbox { get; set; }
+    string state = "Message box hasn't been opened yet";
+    private async void PersonDeleteConfirm(String id)
+    {
+        bool? result = await mbox.Show();
+
+
+        if (result != null && result == true)
+        {
+            monthly_BillService.deleteBillsByPerson(id);
+
+            Person_Service.deletePerson(id);
+
+
+        }
+        UpdatePeopleTable();
+
+    }
+
+
+
+
+    void CommittedItemChanges(PersonModel item)
+    {
+       
+
+
+        if (Person_Service.CheckDuplicate_Email_Phone(item.Email, item.Phone, item.Id) == true)
+        {
+            return;
+        }
+       
+        Person_Service.updatePerson_PersonModel(item);
+        
+
+       
+
+    }
+
+
+
+    private void HandleAddPerson(bool succes)
+    {
+        if (succes)
+        {
+            People = Person_Service.GetListOfTenants(apartment.Apartment_ID);
+            MudDialog.SetOptions(new DialogOptions() { MaxWidth = MaxWidth.Medium });
+        }
+    }
+}

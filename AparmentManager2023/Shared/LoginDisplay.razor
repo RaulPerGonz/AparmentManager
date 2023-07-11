@@ -1,0 +1,15 @@
+﻿
+<AuthorizeView>
+    <Authorized>
+        <a href="Identity/Account/Manage">Hello, @context.User.Identity?.Name!</a>
+        <form method="post" action="Identity/Account/Logout">
+            <button type="submit" class="nav-link btn btn-link">Log out</button>
+        </form>
+    </Authorized>
+    <NotAuthorized>
+        <MudLink Href="Identity/Account/Register" Color="Color.Tertiary">Register</MudLink>
+        <MudLink Href="Identity/Account/Login" Color="Color.Tertiary">Log in</MudLink>
+        
+       
+    </NotAuthorized>
+</AuthorizeView>

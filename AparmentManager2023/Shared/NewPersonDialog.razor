@@ -1,0 +1,115 @@
+﻿@inherits LayoutComponentBase
+@using AparmentManager2023.Data
+@using AparmentManager2023.Data.FrontEnd
+@using AparmentManager2023.Services
+@using System.Text.RegularExpressions
+@using System.ComponentModel.DataAnnotations
+@inject ISnackbar Snackbar
+@inject BillService Person_Service
+@inject Monthly_BillService Bill_Service
+@inject Person_ApartmentService Person_ApartmentService
+@inject IDialogService DialogService
+
+
+<MudDialog DefaultFocus="DefaultFocus.FirstChild">
+    <DialogContent>
+        <MudForm @ref="form" @bind-IsValid="@success" @bind-Errors="@errors">
+            <MudTextField Label="Id" Required="true" RequiredError="Id is required!" @bind-Value="@personId" />
+            <MudTextField Label="Name" Required="true" RequiredError="Name is required!" @bind-Value="@Name" />
+            <MudTextField Label="Email" Required="true" RequiredError="Email is required!" @bind-Value="@Email" Validation="@(new EmailAddressAttribute() {ErrorMessage = "The email address is invalid"})" />
+            <MudTextField Label="Phone" Required="true" RequiredError="Phone is required!" @bind-Value="@Phone" MaxLength="9" />
+            <MudSwitch @bind-Checked="@customstr" T="bool" Label="Payer" Color="Color.Primary" Class="py-3" />
+            <MudContainer Fixed="true" Class="pa-0">
+                <MudDateRangePicker Label="Custom start month" StartMonth="@DateTime.Now.AddMonths(-1)" @bind-DateRange="_dateRange" Class="@(customstr ? "d-felx" : "d-none")" />
+            </MudContainer>
+        </MudForm>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Color="Color.Primary" OnClick="Submit">Ok</MudButton>
+    </DialogActions>
+</MudDialog>
+@code {
+    [CascadingParameter] MudDialogInstance MudDialog { get; set; }
+    [Parameter] public ApartmentClass apartment { get; set; }
+
+
+    void Submit()
+    {
+        PersonModel person = Person_Service.GetPersonModel(personId);
+        if (person == null)
+        {
+            person = new PersonModel();
+            person.Id = personId;
+            person.Name = Name;
+            person.Email = Email;
+            person.Phone = Phone;
+            if (customstr == true && !Person_Service.Exists_Payer_Apartment(apartment.Apartment_ID)) { person.IsPaying = true; }
+            else { person.IsPaying = false; }
+            Person_Service.insertPerson(person);
+            DateRange range = _dateRange;
+
+            DateTime startMonth = range.Start.Value;
+            DateTime endMonth = range.End.Value;
+
+
+            int cantidadMeses = ((endMonth.Year - startMonth.Year) * 12) + endMonth.Month - startMonth.Month;
+   
+
+            Person_ApartmentService.insertPerson_Apartment(person.Id, apartment.Apartment_ID, person.IsPaying); //ERROR apartment coming null
+
+            Bill_Service.CreateMonthlyBillsInRange(apartment.Apartment_ID, startMonth, endMonth, apartment.Monthly_Price,person.Id);
+
+        }
+        else
+        {
+            if (customstr == true && !Person_Service.Exists_Payer_Apartment(apartment.Apartment_ID)) { person.IsPaying = true; }
+            else { person.IsPaying = true; }
+
+
+            Person_Service.insertPerson(person);
+        }
+        MudDialog.Close(DialogResult.Ok(true));
+    }
+    void Cancel() => MudDialog.Cancel();
+
+    bool success;
+    string[] errors = { };
+    bool IsTextEditable;
+    string personId;
+    string Name;
+    string Email;
+    long Phone;
+
+    public void Id_Exists(string id)
+    {
+        PersonModel person = Person_Service.GetPersonModel(id);
+        if (person == null)
+        {
+            Name = "";
+            Email = "";
+            Phone = 0;
+            IsTextEditable = false;
+            return;
+        }
+        Name = person.Name;
+        Email = person.Email;
+        Phone = person.Phone;
+        IsTextEditable = true;
+    }
+
+    private DateRange _dateRange = new DateRange(DateTime.Now.Date, DateTime.Now.AddDays(30).Date);
+
+
+    MudTextField<string> pwField1;
+    MudForm form;
+
+
+
+    //switch
+    public bool customstr { get; set; } = false;
+}
+
+
+
+

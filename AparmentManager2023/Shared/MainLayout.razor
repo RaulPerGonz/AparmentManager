@@ -1,0 +1,45 @@
+﻿@inherits LayoutComponentBase
+
+<MudThemeProvider Theme="myOwnTheme" />
+<MudDialogProvider FullWidth="true"
+                   MaxWidth="MaxWidth.Small" />
+<MudSnackbarProvider />
+<MudLayout>
+    <MudAppBar Elevation="1" Color="Color.Primary">
+        <MudText Typo="Typo.h4">Apartment Manager</MudText>
+        <MudSpacer />
+        
+    </MudAppBar>
+
+    <MudMainContent>
+        <MudContainer MaxWidth="MaxWidth.Large" Class="my-16">
+            @Body
+        </MudContainer>
+    </MudMainContent>
+</MudLayout>
+@code {
+    bool _drawerOpen = true;
+    MudTheme myOwnTheme;
+    protected override Task OnInitializedAsync()
+    {
+        myOwnTheme = new MudTheme()
+            {
+                Palette = new Palette()
+                {
+                    Primary = "#A4C3B2",
+                    Secondary = "#CCE3DE",
+                    Background = "#EDF2F4"
+                  
+
+                },
+
+            };
+        return base.OnInitializedAsync();
+    }
+
+
+    void DrawerToggle()
+    {
+        _drawerOpen = !_drawerOpen;
+    }
+}

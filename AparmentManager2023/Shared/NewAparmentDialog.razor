@@ -1,0 +1,154 @@
+﻿@inherits LayoutComponentBase
+@using AparmentManager2023.Data
+@using AparmentManager2023.Data.FrontEnd;
+@using AparmentManager2023.Services
+@using System.Text.RegularExpressions
+@using System.ComponentModel.DataAnnotations
+@inject ISnackbar Snackbar
+@inject IDialogService DialogService
+@inject ApartmentService aparmentService
+
+<MudDialog DefaultFocus="DefaultFocus.FirstChild">
+    <DialogContent>
+        <MudForm @ref="form" @bind-IsValid="@success" @bind-Errors="@errors">
+            <MudCarousel Class="mud-width-full" Style="height:200px;" AutoCycle="false" ItemsSource="@images" SelectedIndexChanged="ChangeImage" BulletsColor="Color.Info">
+                <ItemTemplate>
+                    <div class="d-flex flex-column flex-column justify-center" style="height:100%">
+                        
+                        <MudImage ObjectFit="ObjectFit.Cover" Src="@context"  Style="width: 100%"  />
+
+                    </div>
+                </ItemTemplate>
+            </MudCarousel>
+            <MudTextField T="string" Label="Name" Required="true" RequiredError="Apartment name is required!" @bind-Value="@Name" />
+            <MudTextField T="string" Label="Address" Required="true" RequiredError="Address is required!" @bind-Value="@Address" />
+            <MudTextField T="float" Label="Monthly_Price" Required="true" RequiredError="Price is required!" @bind-Value="@MonthlyPrice" />
+            <MudTextField T="int" Label="Num_Bedrooms" Required="true" RequiredError="Number of bedrooms  is required!" @bind-Value="@NumBedrooms" />
+            <MudTextField T="int" Label="M2" Required="true" RequiredError="m2 is required!" @bind-Value="@M2" />
+           
+
+        </MudForm>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Color="Color.Primary"  OnClick="Upload">Ok</MudButton>
+    </DialogActions>
+</MudDialog>
+@code {
+    [CascadingParameter] MudDialogInstance MudDialog { get; set; }
+
+    void Submit() => MudDialog.Close(DialogResult.Ok(true));
+    void Cancel() => MudDialog.Cancel();
+
+    bool success;
+    string[] errors = { };
+    MudTextField<string> pwField1;
+    MudForm form;
+
+ 
+
+
+
+    List<string> images = new List<string>
+{
+    "css/images/apartment.jpg",
+    "css/images/house.jpg",
+    "css/images/loft.jpg"
+};
+
+    private void ChangeImage(int index)
+    {
+        Image = images[index];
+    }
+
+
+
+
+    private static string DefaultDragClass = "relative rounded-lg border-2 border-dashed pa-4 mt-4 mud-width-full mud-height-full z-10";
+    private string DragClass = DefaultDragClass;
+    private List<string> fileNames = new List<string>();
+
+
+    int apartmentID;
+    int OwnerID;
+    string Name;
+    string Address;
+    float MonthlyPrice;
+    int NumBedrooms;
+    int M2;
+    string Image;
+
+
+    private void OnInputFileChanged(InputFileChangeEventArgs e)
+    {
+        ClearDragClass();
+        var files = e.GetMultipleFiles();
+
+        if (files.Count > 1)
+        {
+            Snackbar.Configuration.PositionClass = Defaults.Classes.Position.TopCenter;
+            Snackbar.Add("You can only upload one file", Severity.Error);
+
+        }
+        else
+        {
+            foreach (var file in files)
+            {
+
+                if (file.ContentType != "image/jpeg")
+                {
+                    Snackbar.Configuration.PositionClass = Defaults.Classes.Position.TopCenter;
+                    Snackbar.Add("Only .jpg files are allowed!", Severity.Error);
+                    continue;
+                }
+                else
+                {
+
+                }
+                fileNames.Add(file.Name);
+            }
+        }
+
+
+    }
+
+    private async Task Clear()
+    {
+        fileNames.Clear();
+        ClearDragClass();
+        await Task.Delay(100);
+    }
+    private void Upload()
+    {
+
+        ApartmentClass apartment = aparmentService.GetApartmentClass(apartmentID);
+        if (apartment == null)
+        {
+            apartment = new ApartmentClass();
+            apartment.Apartment_ID = new Random().Next(10000, 99999);
+            apartment.Owner_ID = 1;
+            apartment.Name = Name;
+            apartment.Address = Address;
+            apartment.Monthly_Price = MonthlyPrice;
+            apartment.Num_Bedrooms = NumBedrooms;
+            apartment.M2 = M2;
+            apartment.Image = Image;
+
+            aparmentService.insertApartment(apartment);
+
+        }
+       
+        Cancel();
+    }
+
+    private void SetDragClass()
+    {
+        DragClass = $"{DefaultDragClass} mud-border-primary";
+    }
+
+    private void ClearDragClass()
+    {
+        DragClass = DefaultDragClass;
+    }
+
+}

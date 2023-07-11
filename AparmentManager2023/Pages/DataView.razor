@@ -1,0 +1,182 @@
+﻿@page "/data"
+@using AparmentManager2023.Data,
+@using AparmentManager2023.Services;
+@inject OwnerService os
+@inject ApartmentService aps
+@inject BillService ps
+@inject Person_ApartmentService pas
+@inject Monthly_BillService mbs
+
+<h3>DataView</h3>
+<table class="table-bordered">
+    <tr>
+        <th>CardNum_ID</th>
+        <th>Name</th>
+        <th>Email</th>
+        <th>Phone</th>
+        <th>Owner_id</th>
+        <th>Username</th>
+        <th>Password</th>
+    </tr>
+
+    @foreach (var item in Owners)
+    {
+        <tr>
+            <td>@item.CardNum_ID</td>
+            <td>@item.Name</td>
+            <td>@item.Email</td>
+            <td>@item.Phone</td>
+            <td>@item.Owner_ID</td>
+            <td>@item.Password</td>
+            <td>@item.Email</td>
+        </tr>
+    }
+</table>
+<br>
+<table class="table-bordered">
+    <tr>       
+        <th>Apartment_ID</th>
+        <th>Owner_ID</th>
+        <th>Name</th>
+        <th>Address</th>
+        <th>Monthly_Price</th>
+        <th>Num_bedrooms</th>
+        <th>M2</th>
+        <th>Image</th>
+        <th>People</th>
+    </tr>
+
+    @foreach (var item in Apartments)
+    {
+        <tr>
+            <td>@item.Apartment_ID</td>
+            <td>@item.Owner_ID</td>
+            <td>@item.Name</td>
+            <td>@item.Address</td>
+            <td>@item.Monthly_Price</td>
+            <td>@item.Num_Bedrooms</td>
+            <td>@item.M2</td>
+            <td>@item.Image</td>
+            <td>@string.Join(", ", item.People.Select(x => x.Person.Name).ToList())</td>
+        </tr>
+    }
+</table>
+<br>
+<table class="table-bordered">
+    <tr>
+        <th>Id</th>
+        <th>Name</th>
+        <th>Address</th>
+        <th>People</th>
+    </tr>
+
+    @foreach (var item in ApartmentsOverview.Where(x => x.People.Count > 0))
+    {
+        <tr>
+            <td>@item.Owner_ID</td>
+            <td>@item.ApartmentName</td>
+            <td>@item.ApartmentAddress</td>
+            <td>@string.Join(", ", item.People.OrderBy(x => x))</td>
+        </tr>
+    }
+</table>
+<br>
+<table class="table-bordered">
+    <tr>
+        <th>CardNum_ID</th>
+        <th>Name</th>
+        <th>Email</th>
+        <th>Phone</th>
+    </tr>
+
+    @foreach (var item in People)
+    {
+        <tr>
+            <td>@item.CardNum_ID</td>
+            <td>@item.Name</td>
+            <td>@item.Email</td>
+            <td>@item.Phone</td>
+        </tr>
+    }
+</table>
+<br>
+<br>
+<table class="table-bordered">
+    <tr>
+        <th>CardNum_ID</th>
+        <th>Name</th>
+        <th>Email</th>
+        <th>Phone</th>
+    </tr>
+
+    @foreach (var item in People_in_ap)
+    {
+        <tr>
+            <td>@item.CardNum_ID</td>
+            <td>@item.Name</td>
+            <td>@item.Email</td>
+            <td>@item.Phone</td>
+        </tr>
+    }
+</table>
+<br>
+<table class="table-bordered">
+    <tr>
+        <th>CardNum_ID</th>
+        <th>Apartment_ID</th>
+        <th>Payer</th>
+    </tr>
+
+    @foreach (var item in Person_Ap)
+    {
+        <tr>
+            <td>@item.CardNum_ID</td>
+            <td>@item.Apartment_ID</td>
+            <td>@item.Payer</td>
+        </tr>
+    }
+</table>
+<br>
+<table class="table-bordered">
+    <tr>
+        <th>Bill ID</th>
+        <th>CardNum_ID</th>
+        <th>Apartment_ID</th>
+        <th>Month</th>
+        <th>Year</th>
+        <th>Amount Paid</th>
+    </tr>
+
+    @foreach (var item in Bills)
+    {
+        <tr>
+            <td>@item.Bill_ID</td>
+            <td>@item.CardNum_ID</td>
+            <td>@item.Apartment_ID</td>
+            <td>@item.Month</td>
+            <td>@item.Year</td>
+            <td>@item.Amount_Paid</td>
+        </tr>
+    }
+</table>
+
+@code {
+    public List<OwnerClass> Owners;
+    public List<ApartmentClass> Apartments;
+    public List<ApartmentOverview> ApartmentsOverview;
+    public List<PersonClass> People;
+    public List<PersonClass> People_in_ap;
+    public List<Person_ApartmentClass> Person_Ap;
+    public List<Monthly_BillClass> Bills;
+    protected override void OnInitialized()
+    {
+        Owners = os.displayowner();
+        Apartments = aps.displayapartment();
+        ApartmentsOverview = aps.loadOverviews(""); //Display apartments with a name filter
+        People = ps.displayperson();
+        People_in_ap = ps.displaypeople_in_apartment(1); // Display people in a specific apartment {Apartment_ID}
+        Person_Ap = pas.displayperson_apartment();
+        Bills = mbs.displayMonthly_Bill();
+    }
+    
+}
